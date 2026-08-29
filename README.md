@@ -79,13 +79,20 @@ Norme **couplée** au règlement sismique : **BAEL 91** si RPS 2011,
 **Eurocode 2** si EC8.
 - **Fissuration** (ouverture `w_k`, EC2 7.3.4 / Fasc. 74) **uniquement pour les
   éléments en contact avec l'eau** : radier de réservoir, parois/coque de cuve,
-  ceintures (pariétales + anneaux de liaison), coupole inf.
+  ceintures de la cuve, coupole inf.
 - **FP/FPP max (ELU–ELA), sans fissuration**, pour les éléments hors eau :
   radier de château (sous la tour), fût/tour, coupole sup, dalle de couverture.
-- **Coupoles** (sup/inf, Fasc. 74 : flèche `≥ D/10` et `≥ d/8`) et **ceintures**
-  (anneau cuve↔coupole sup, anneau fût↔cuve↔coupole inf) : géométrie et
+- **Ceintures** = armatures annulaires horizontales de la cuve (tension
+  circulaire `T = p·R`). Les **2 ceintures de raccord** — sommet (cuve ↔ coupole
+  sup) et base (cuve ↔ coupole inf / fût) — reprennent la traction **combinée**
+  de la cuve **et** des coupoles (poussée horizontale des coupoles reportée sur
+  ces 2 cercles). **Aucun anneau de liaison distinct n'est introduit** ; les
+  ceintures intermédiaires ne reprennent que la pression d'eau. Leurs sections
+  (`l`, `h`) sont saisies à la 1ʳᵉ page.
+- **Coupoles** (sup/inf, Fasc. 74 : flèche `≥ D/10` et `≥ d/8`) : géométrie et
   épaisseurs saisies dès la 1ʳᵉ page pour que leur poids alimente le
-  dimensionnement de la fondation.
+  dimensionnement de la fondation ; leur traction horizontale est reprise par les
+  ceintures de raccord de la cuve.
 
 ### 6. Exports
 Note de calcul **PDF**, **DOCX** (avec croquis de coupe) et **CSV**.

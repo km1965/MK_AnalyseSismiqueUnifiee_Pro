@@ -225,11 +225,13 @@ def test_ceintures_sup_inf_chateau():
                                  "epaisseur_cuve_m": 0.35},
                                 {"w_max": 0.2})
     labels = [it.label for _, items in arm.sections for it in items]
-    assert any("CEINTURE SUP" in l for l in labels), "ceinture sup manquante"
-    assert any("CEINTURE INF" in l for l in labels), "ceinture inf manquante"
-    # les ceintures sont en contact d'eau -> fissuration verifiee
-    assert any("Ceinture" in l and "Ouverture fissure" in l for l in labels) or \
-        any("CEINTURE" in l and "Ouverture fissure" in l for l in labels)
+    # Les 2 ceintures de raccord (base + sommet de la cuve) reprennent la traction
+    # combinée cuve + coupoles (aucun anneau de liaison distinct).
+    assert any("Ceinture base" in l and "coupole inf" in l for l in labels), "ceinture base manquante"
+    assert any("Ceinture sommet" in l and "coupole sup" in l for l in labels), "ceinture sommet manquante"
+    # ces ceintures (raccord cuve, contact eau) -> fissuration verifiee
+    assert any(("Ceinture base" in l or "Ceinture sommet" in l) and "Ouverture fissure" in l
+               for l in labels)
 
 
 def test_masse_coupoles_alimente_chargement():
@@ -279,8 +281,9 @@ def test_fissuration_scope_fp_fpp():
     assert not any("Ouverture fissure" in l for _, l, _ in flat if "Coupole sup" in l)
     # coupole inf : fissure presente (contact eau)
     assert any("Ouverture fissure" in l for _, l, _ in flat if "Coupole inf" in l)
-    # parois/ceintures : fissure presente (contact eau)
-    assert any("Ouverture fissure" in l for _, l, _ in flat if "Ceintures" in l)
+    # parois/ceintures de raccord cuve : fissure presente (contact eau)
+    assert any("Ouverture fissure" in l for _, l, _ in flat
+               if ("Ceinture base" in l or "Ceinture sommet" in l))
     # reservoir : radier EN contact eau -> fissure
     re, _ = analyser_reservoir_semi_enterre(
         {"type": "Rectangulaire", "H_fluide": 5.0, "H_enterre": 3.0, "soil_gamma": 18.0,

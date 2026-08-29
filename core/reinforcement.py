@@ -179,36 +179,72 @@ def _section_radierr(items: List[Item], nom: str, p, L, e_mm, d_mm, fy, norme, f
 
 # ============================================================== CEINTURES
 def _section_ceintures(items: List[Item], R: float, H: float, kh: float, fy: float,
-                        norme: str, fck: float, e_mm: float, f: FoundationInput) -> None:
-    """Ceintures = armatures annulaires HORIZONTALES (tension circulaire T = p·R).
+                        norme: str, fck: float, e_mm: float, f: FoundationInput,
+                        geom: dict = None) -> None:
+    """Ceintures horizontales de la cuve (tension circulaire T = p·R), réparties sur H.
 
-    Réparties sur la hauteur (max à la base). Vérification fissuration car la cuve
-    est en contact permanent de l'eau (Fasc. 74).
+    Les 2 ceintures de raccord (base et sommet de la cuve) reprennent EN PLUS la
+    traction des coupoles (pas d'anneau de liaison distinct) :
+      - sommet : poussée horizontale de la coupole sup ;
+      - base   : poussée de la coupole inf + culot de paroi.
+    Leurs sections (largeur l, hauteur h) proviennent des champs « ceinture sup/inf »
+    saisis à la 1re page (sinon on retombe sur l'épaisseur de la cuve). Fissuration
+    (Fasc. 74) car la cuve est en contact permanent de l'eau.
     """
     as_min = _as_min_per_m(fck, norme)
     d_mm = _d_eff(e_mm, f)
 
+    # --- effort des coupoles reporté sur les ceintures de raccord ---
+    Ts_sup = 0.0          # poussée horizontale coupole sup (sommet cuve)
+    Ti_inf = 0.0          # coupole inf + culot de paroi (base cuve)
+    csup_h = None
+    cinf_h = None
+    if geom:
+        D_sup = geom.get("coupole_sup_D", 2.0 * R)
+        f_sup = geom.get("coupole_sup_f", D_sup / 10.0)
+        e_csup = geom.get("coupole_sup_e", max(0.15, D_sup / 35.0))
+        d_inf = geom.get("coupole_inf_d", 2.0 * R)
+        f_inf = geom.get("coupole_inf_f", d_inf / 8.0)
+        e_cinf = geom.get("coupole_inf_e", max(0.15, d_inf / 35.0))
+        Rs_s = (D_sup**2 / 4.0 + f_sup**2) / (2.0 * f_sup) if f_sup > 0 else D_sup / 2.0
+        Rs_i = (d_inf**2 / 4.0 + f_inf**2) / (2.0 * f_inf) if f_inf > 0 else d_inf / 2.0
+        Ts_sup = GAMMA_B * e_csup * Rs_s / 2.0
+        Ti_inf = (GAMMA_W * H + GAMMA_B * e_cinf) * Rs_i / 2.0 + GAMMA_W * H * (d_inf / 2.0)
+        csup_h = geom.get("ceinture_sup_h", None)
+        cinf_h = geom.get("ceinture_inf_h", None)
+
     def tension(z: float) -> float:
         return GAMMA_W * (H - z) * (1.0 + kh) * R   # kN/m
 
-    T_base = tension(0.0)
+    # --- CEINTURE BASE (eau + coupole inf + culot) ---
+    d_base = _d_eff(cinf_h * 1000.0, f) if cinf_h else d_mm
+    e_base = cinf_h * 1000.0 if cinf_h else e_mm
+    T_base = tension(0.0) + Ti_inf
+    T_base_s = GAMMA_W * H * R + Ti_inf
     items.append(Item("Rayon paroi R (m)", R, "m", "cuve circulaire"))
     items.append(Item("Tension annulaire max T (kN/m)", T_base, "kN/m",
-                      "T = γ·H·(1+kh)·R  [base]"))
-    # fissure en traction pure : effort de service = hydrostatique seul
-    _gouverne(items, "Ceintures (base)", T_base, GAMMA_W * H * R, d_mm, e_mm, fy, fck,
-              norme, 0.20, as_min, mode="tension")
+                      "T = γ·H·(1+kh)·R + coupole inf [base]"))
+    _gouverne(items, "Ceinture base (cuve + coupole inf)", T_base, T_base_s,
+              d_base, e_base, fy, fck, norme, 0.20, as_min, mode="tension")
+    # --- ceintures pariétales intermédiaires (eau seule) ---
     niv = max(4, min(20, int(round(H))))
-    items.append(Item("Nombre de niveaux de ceintures", niv + 1, "",
-                      "réparties sur toute la hauteur H"))
+    items.append(Item("Nombre de ceintures pariétales", niv - 1, "",
+                      "réparties sur la hauteur H (eau seule)"))
     for i in range(1, niv):
         z = H * i / niv
         Tz = tension(z)
-        _gouverne(items, f"Ceintures z={z:.1f} m", Tz, GAMMA_W * (H - z) * R, d_mm, e_mm,
+        _gouverne(items, f"Ceinture z={z:.1f} m", Tz, GAMMA_W * (H - z) * R, d_mm, e_mm,
                   fy, fck, norme, 0.20, as_min, mode="tension")
+    # --- CEINTURE SOMMET (coupole sup) ---
     btop = _choisir_barres(as_min)
-    items.append(Item("Ceinture sommet (couronnement)", f"As mini = {as_min:.0f} mm²/m", "mm²/m",
-                      f"répartition minimale {btop[0]}/{btop[1]}", "OK"))
+    if Ts_sup > 1e-6:
+        d_top = _d_eff(csup_h * 1000.0, f) if csup_h else d_mm
+        e_top = csup_h * 1000.0 if csup_h else e_mm
+        _gouverne(items, "Ceinture sommet (cuve + coupole sup)", Ts_sup, Ts_sup,
+                  d_top, e_top, fy, fck, norme, 0.20, as_min, mode="tension")
+    else:
+        items.append(Item("Ceinture sommet (couronnement)", f"As mini = {as_min:.0f} mm²/m", "mm²/m",
+                          f"répartition minimale {btop[0]}/{btop[1]}", "OK"))
 
 
 # ============================================================== COUPOLES
@@ -223,14 +259,17 @@ def _coupole_geom(R: float, flc: float):
 
 def _section_coupoles(items: List[Item], geom: dict, H_eau: float,
                       fy: float, fck: float, norme: str, f: FoundationInput) -> None:
-    """Coupoles sup/inf (saisies 1re page) + ceintures sup/inf (anneaux de liaison).
+    """Coques des coupoles sup/inf (saisies 1re page).
 
     Fasc. 74 : flèche sup ≥ D/10, flèche inf ≥ d/8. Membrane sphérique : tension
     annulaire ≈ p·Rs/2.
       - Coupole SUP : hors contact eau -> FP/FPP max (ELU).
-      - Ceinture SUP : anneau cuve ↔ coupole sup (en limite d'eau) -> fissuration.
       - Coupole INF : contact eau -> fissuration.
-      - Ceinture INF : anneau fût ↔ cuve ↔ coupole inf -> fissuration.
+
+    La traction horizontale de ces coupoles est REPRISE par les ceintures de la
+    cuve (voir _section_ceintures) : la ceinture sommet porte la coupole sup, la
+    ceinture base porte la coupole inf + culot de paroi. Aucun anneau de liaison
+    distinct n'est introduit.
     """
     as_min = _as_min_per_m(fck, norme)
     Rf = geom.get("R_fond", 0.0); Rs = geom.get("R_surface", 0.0)
@@ -240,17 +279,10 @@ def _section_coupoles(items: List[Item], geom: dict, H_eau: float,
     d_inf = geom.get("coupole_inf_d", 2.0 * Rf)
     f_inf = geom.get("coupole_inf_f", d_inf / 8.0)
     e_cinf = geom.get("coupole_inf_e", max(0.15, d_inf / 35.0))
-    # Ceintures sup/inf : anneaux de liaison à section rectangulaire (largeur l, hauteur h)
-    csup_l = geom.get("ceinture_sup_l", 0.40)
-    csup_h = geom.get("ceinture_sup_h", 0.60)
-    cinf_l = geom.get("ceinture_inf_l", 0.50)
-    cinf_h = geom.get("ceinture_inf_h", 0.70)
     Rs_s = (D_sup**2 / 4.0 + f_sup**2) / (2.0 * f_sup) if f_sup > 0 else D_sup / 2.0
     Rs_i = (d_inf**2 / 4.0 + f_inf**2) / (2.0 * f_inf) if f_inf > 0 else d_inf / 2.0
     d_s = _d_eff(e_csup * 1000.0, f)
     d_i = _d_eff(e_cinf * 1000.0, f)
-    d_cs = _d_eff(csup_h * 1000.0, f)
-    d_ci = _d_eff(cinf_h * 1000.0, f)
 
     # ---- COUPOLE SUPERIEURE (hors eau) ----
     T_s = GAMMA_B * e_csup * Rs_s / 2.0     # poids propre (kPa->kN/m)
@@ -263,15 +295,6 @@ def _section_coupoles(items: List[Item], geom: dict, H_eau: float,
     ]
     _gouverne(items, "Coupole sup (coque)", T_s, T_s, d_s, e_csup * 1000.0, fy, fck,
               norme, 0.20, as_min, mode="tension", crack=False)
-    # ---- CEINTURE SUP (anneau liaison cuve ↔ coupole sup) ----
-    items += [
-        Item("CEINTURE SUP (cuve ↔ coupole sup)", "", "", "anneau de liaison — limite eau"),
-        Item("  Tension anneau T (kN/m)", round(T_s, 1), "kN/m"),
-        Item("  Largeur anneau l (m)", round(csup_l, 3), "m", "saisie 1re page"),
-        Item("  Hauteur anneau h (m)", round(csup_h, 3), "m", "saisie 1re page"),
-    ]
-    _gouverne(items, "Ceinture sup (anneau)", T_s, T_s, d_cs, csup_h * 1000.0, fy, fck,
-              norme, 0.20, as_min, mode="tension", crack=True)
 
     # ---- COUPOLE INFÉRIEURE (contact eau) ----
     T_i = (GAMMA_W * H_eau + GAMMA_B * e_cinf) * Rs_i / 2.0
@@ -284,16 +307,6 @@ def _section_coupoles(items: List[Item], geom: dict, H_eau: float,
     ]
     _gouverne(items, "Coupole inf (coque)", T_i, (GAMMA_W * H_eau + GAMMA_B * e_cinf) * Rs_i / 2.0,
               d_i, e_cinf * 1000.0, fy, fck, norme, 0.20, as_min, mode="tension", crack=True)
-    # ---- CEINTURE INF (anneau liaison fût ↔ cuve ↔ coupole inf) ----
-    T_inf_anneau = T_i + GAMMA_W * H_eau * (d_inf / 2.0)   # coupole + culot paroi
-    items += [
-        Item("CEINTURE INF (fût ↔ cuve ↔ coupole inf)", "", "", "anneau de liaison — contact eau"),
-        Item("  Tension anneau T (kN/m)", round(T_inf_anneau, 1), "kN/m"),
-        Item("  Largeur anneau l (m)", round(cinf_l, 3), "m", "saisie 1re page"),
-        Item("  Hauteur anneau h (m)", round(cinf_h, 3), "m", "saisie 1re page"),
-    ]
-    _gouverne(items, "Ceinture inf (anneau)", T_inf_anneau, T_inf_anneau, d_ci, cinf_h * 1000.0,
-              fy, fck, norme, 0.20, as_min, mode="tension", crack=True)
 
 
 # ============================================================== COUVERTURE + LANTERNEAUX
@@ -448,7 +461,7 @@ def calculer_armatures(analysis_report: Report, foundation_report: Report,
             ]
             _gouverne(items_paroi, "Paroi verticale", Mv, Mv_serv, d_v, e_cuve_mm, fy, f.fck,
                       norme, w_max, _as_min_per_m(f.fck, norme))
-            _section_ceintures(items_paroi, Rf, H, kh, fy, norme, f.fck, e_cuve_mm, f)
+            _section_ceintures(items_paroi, Rf, H, kh, fy, norme, f.fck, e_cuve_mm, f, geom)
             # Tour / fût (hors contact eau -> FP/FPP max)
             _section_fut(items_paroi, geom.get("R_fut_base", Rf), e_fut, M_base, fy, f.fck, norme, f)
             # Coupoles sup/inf + ceintures sup/inf (géométrie & épaisseurs saisies 1re page)
