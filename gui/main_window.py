@@ -9,7 +9,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QLineEdit, QComboBox, QTextEdit, QGroupBox, QFormLayout, QGridLayout, QTabWidget,
-    QFileDialog, QMessageBox,
+    QFileDialog, QMessageBox, QMenu, QMenuBar,
 )
 import csv
 
@@ -63,6 +63,7 @@ class MainWindow(QMainWindow):
         self._build_entrees()
         self._build_fondations()
         self._build_armatures()
+        self._build_menu()
         self._refresh_fond_shape()
 
         # Résultats + actions
@@ -137,25 +138,42 @@ class MainWindow(QMainWindow):
         # Coupoles (saisies 1re page -> poids dans le dimensionnement)
         self.cs_d = QLineEdit("18.0"); self.cs_f = QLineEdit("1.80"); self.cs_e = QLineEdit("0.30")
         self.ci_d = QLineEdit("10.0"); self.ci_f = QLineEdit("1.25"); self.ci_e = QLineEdit("0.30")
-        row = 0
-        for lbl, w in [("H_fluide (m)", self.h_fluide_ce), ("R_fond (m)", self.r_fond_ce),
-                       ("R_surface (m)", self.r_surface_ce)]:
-            g.addWidget(QLabel(lbl), row, 0); g.addWidget(w, row, 1); row += 1
-        for lbl, w in [("H_fût (m)", self.h_fut_ce), ("R_fût base (m)", self.r_fut_base_ce),
-                       ("R_fût sommet (m)", self.r_fut_sommet_ce)]:
-            g.addWidget(QLabel(lbl), row, 0); g.addWidget(w, row, 1); row += 1
-        for lbl, w in [("Épais. fût (m)", self.ep_fut_ce), ("Épais. cuve (m)", self.ep_cuve_ce)]:
-            g.addWidget(QLabel(lbl), row, 0); g.addWidget(w, row, 1)
-        row += 1
-        g.addWidget(QLabel("<b>Coupole sup</b> (D/10, Fasc.74)"), row, 0, 1, 3); row += 1
-        for lbl, w in [("  D sommet (m)", self.cs_d), ("  flèche f (m)", self.cs_f),
-                       ("  épais. e (m)", self.cs_e)]:
-            g.addWidget(QLabel(lbl), row, 0); g.addWidget(w, row, 1); row += 1
-        g.addWidget(QLabel("<b>Coupole inf</b> (d/8, Fasc.74)"), row, 0, 1, 3); row += 1
-        for lbl, w in [("  d base (m)", self.ci_d), ("  flèche f (m)", self.ci_f),
-                       ("  épais. e (m)", self.ci_e)]:
-            g.addWidget(QLabel(lbl), row, 0); g.addWidget(w, row, 1); row += 1
+        # Ceintures de liaison (section rectangulaire : largeur l, hauteur h)
+        self.cs_l = QLineEdit("0.40"); self.cs_h = QLineEdit("0.60")
+        self.ci_l = QLineEdit("0.50"); self.ci_h = QLineEdit("0.70")
+
+        def add_row(row, specs):
+            for i, (lbl, w) in enumerate(specs):
+                g.addWidget(QLabel(lbl), row, i * 2)
+                g.addWidget(w, row, i * 2 + 1)
+
+        add_row(0, [("H_fluide (m)", self.h_fluide_ce), ("R_fond (m)", self.r_fond_ce),
+                    ("R_surface (m)", self.r_surface_ce), ("Épais. cuve (m)", self.ep_cuve_ce)])
+        add_row(1, [("H_fût (m)", self.h_fut_ce), ("R_fût base (m)", self.r_fut_base_ce),
+                    ("R_fût sommet (m)", self.r_fut_sommet_ce), ("Épais. fût (m)", self.ep_fut_ce)])
+        g.addWidget(QLabel("<b>Coupole sup</b> (flèche ≥ D/10, Fasc.74)"), 2, 0, 1, 6)
+        add_row(3, [("D base = 2·R_surface (m)", self.cs_d), ("flèche f (m)", self.cs_f),
+                    ("épais. e (m)", self.cs_e)])
+        g.addWidget(QLabel("<b>Coupole inf</b> (flèche ≥ d/8, Fasc.74)"), 4, 0, 1, 6)
+        add_row(5, [("d base = 2·R_fond (m)", self.ci_d), ("flèche f (m)", self.ci_f),
+                    ("épais. e (m)", self.ci_e)])
+        g.addWidget(QLabel("<b>Ceinture sup</b> (anneau cuve ↔ coupole sup)"), 6, 0, 1, 6)
+        add_row(7, [("largeur l (m)", self.cs_l), ("hauteur h (m)", self.cs_h)])
+        g.addWidget(QLabel("<b>Ceinture inf</b> (anneau fût ↔ cuve ↔ coupole inf)"), 8, 0, 1, 6)
+        add_row(9, [("largeur l (m)", self.ci_l), ("hauteur h (m)", self.ci_h)])
         self.chateau_eau_group.setLayout(g)
+        # D base et d base suivent les rayons (formules) mais restent éditables
+        self.r_surface_ce.textChanged.connect(
+            lambda _: self._maj_diametre_coupole(self.r_surface_ce, self.cs_d))
+        self.r_fond_ce.textChanged.connect(
+            lambda _: self._maj_diametre_coupole(self.r_fond_ce, self.ci_d))
+
+    def _maj_diametre_coupole(self, radius_edit, diam_edit):
+        try:
+            r = float(radius_edit.text())
+        except ValueError:
+            return
+        diam_edit.setText(f"{2.0 * r:.2f}")
 
     def setup_reservoir_enterre_group(self):
         self.reservoir_enterre_group = QGroupBox("Paramètres du Réservoir Semi-Enterré")
@@ -192,8 +210,8 @@ class MainWindow(QMainWindow):
         self.q_input = QLineEdit("2.0")
         g.addWidget(QLabel("Règlement:"), 0, 0); g.addWidget(self.regulation_combo, 0, 1)
         g.addWidget(QLabel("Zone:"), 0, 2); g.addWidget(self.zone_combo, 0, 3)
-        g.addWidget(QLabel("Sol:"), 1, 0); g.addWidget(self.soil_combo, 1, 1)
-        g.addWidget(QLabel("q:"), 1, 2); g.addWidget(self.q_input, 1, 3)
+        g.addWidget(QLabel("Sol:"), 0, 4); g.addWidget(self.soil_combo, 0, 5)
+        g.addWidget(QLabel("q:"), 0, 6); g.addWidget(self.q_input, 0, 7)
         self.sismique_group.setLayout(g)
         self.regulation_combo.currentTextChanged.connect(lambda t: setattr(self, "regulation", t))
 
@@ -301,12 +319,10 @@ class MainWindow(QMainWindow):
         self.arm_wmax = QLineEdit("0.20")
         self.arm_qcouv = QLineEdit("1.50")
         self.arm_qlan = QLineEdit("10.0")
-        self.arm_ecuve = QLineEdit("0.35")
         self.arm_ecouv = QLineEdit("")
         fopt.addRow("Limite fissuration w_max (mm) :", self.arm_wmax)
         fopt.addRow("Charge couverture q_couv (kN/m²) :", self.arm_qcouv)
         fopt.addRow("Charge lanterneau Q (kN) :", self.arm_qlan)
-        fopt.addRow("Épaisseur cuve/ceintures e (m) :", self.arm_ecuve)
         fopt.addRow("Épaisseur dalle couverture (m) :", self.arm_ecouv)
         layout.addLayout(fopt)
 
@@ -316,6 +332,97 @@ class MainWindow(QMainWindow):
         h = QHBoxLayout(); h.addStretch(); h.addWidget(self.btn_arm); h.addStretch()
         layout.addLayout(h)
         layout.addStretch()
+
+    # -------------------------------------------------------------- Menu
+    def _build_menu(self):
+        menubar = self.menuBar()
+
+        def a_venir(msg):
+            QMessageBox.information(self, "À venir", f"Fonctionnalité prévue (feuille de route) :\n{msg}")
+
+        # ---- Fichier ----
+        fichier = menubar.addMenu("Fichier")
+        fichier.addAction("Nouveau…", lambda: a_venir("Nouveau projet (fichier .mkpro)"))
+        fichier.addAction("Ouvrir…", lambda: a_venir("Ouvrir un projet (.mkpro)"))
+        fichier.addAction("Enregistrer", lambda: a_venir("Enregistrer le projet (.mkpro)"))
+        fichier.addSeparator()
+        fichier.addAction("Lancer l'Analyse", self.run_analysis)
+        fichier.addAction("Exporter PDF…", self.generer_pdf)
+        fichier.addAction("Exporter DOCX…", self.generer_docx)
+        fichier.addAction("Exporter CSV…", self.exporter_csv)
+        fichier.addSeparator()
+        fichier.addAction("Quitter", self.close)
+
+        # ---- Édition ----
+        edition = menubar.addMenu("Édition")
+        edition.addAction("Annuler", lambda: a_venir("Annuler / Rétablir"))
+        edition.addAction("Rétablir", lambda: a_venir("Annuler / Rétablir"))
+        edition.addAction("Copier les paramètres", lambda: a_venir("Copier les paramètres d'un ouvrage à l'autre"))
+        edition.addAction("Paramètres par défaut", lambda: a_venir("Restaurer les usines"))
+
+        # ---- Analyse ----
+        analyse = menubar.addMenu("Analyse")
+        analyse.addAction("Lancer l'analyse sismique", self.run_analysis)
+        analyse.addAction("Vérifier la fondation", self.run_foundation)
+        analyse.addAction("Auto-dimensionner le radier", self.auto_foundation)
+        analyse.addAction("Calculer les armatures", self.run_armatures)
+        analyse.addAction("Réinitialiser les résultats", self.reinitialiser_resultats)
+
+        # ---- Affichage ----
+        affichage = menubar.addMenu("Affichage")
+        affichage.addAction("Agrandir les croquis", lambda: a_venir("Zoom des croquis"))
+        affichage.addAction("Thème clair / sombre", lambda: a_venir("Bascule thème clair/sombre"))
+
+        # ---- Outils ----
+        outils = menubar.addMenu("Outils")
+        outils.addAction("Règlements (RPS 2011 / EC8)", lambda: a_venir("Éditeur de règlements & spectres"))
+        outils.addAction("Bibliothèque de sols", lambda: a_venir("Bibliothèque de sols (φ, γ, δ)"))
+        outils.addAction("Bibliothèque bétons/aciers", lambda: a_venir("Bibliothèque de bétons & aciers"))
+        outils.addAction("Comparateur de scénarios", lambda: a_venir("Comparateur vide vs plein / plusieurs géométries"))
+
+        # ---- Langue ----
+        langue = menubar.addMenu("Langue")
+        langue.addAction("Français", lambda: a_venir("Basculer l'interface en français"))
+        langue.addAction("English", lambda: a_venir("Switch interface to English"))
+        langue.addAction("العربية", lambda: a_venir("تبديل الواجهة إلى العربية"))
+
+        # ---- Aide ----
+        aide = menubar.addMenu("?")
+        aide.addAction("À propos", self.a_propos)
+        aide.addAction("Guide de prise en main", lambda: a_venir("Guide de prise en main"))
+        aide.addAction("Références", self.references)
+
+    def a_propos(self):
+        QMessageBox.about(
+            self, "À propos — MK_AnalyseSismiqueUnifiée_Pro",
+            "Outil d'analyse sismique et de dimensionnement pour châteaux d'eau "
+            "surélevés et réservoirs (semi-)enterrés.\n\n"
+            "Méthodes : Housner (liquide), Mononobe–Okabe (terres), combinaisons "
+            "VIDE / PLEIN. Règlements : RPS 2011 (Maroc) et Eurocode 8.\n\n"
+            "Pré-dimensionnement documenté — à vérifier par un ingénieur.")
+
+    def references(self):
+        QMessageBox.information(
+            self, "Références",
+            "• Housner G.W., Dynamic pressures on fluid containers, 1963.\n"
+            "• Mononobe N. & Okabe S., Earth pressure during earthquakes, 1929.\n"
+            "• RPS 2011 (Maroc), annexes sismiques.\n"
+            "• Eurocode 8 (EN 1998-1) et Eurocode 2 (EN 1992-1-1).\n"
+            "• BAEL 91 modifié (référence historique Maroc).\n"
+            "• Fascicule 74 (cuves en béton armé, fissuration).")
+
+    def reinitialiser_resultats(self):
+        self.rapport_analyse = None
+        self.rapport_fondation = None
+        self.rapport_armatures = None
+        self.foundation_input = None
+        self.fondation_ok = False
+        self.armatures_ok = False
+        self.tabs.setTabEnabled(1, False)
+        self.tabs.setTabEnabled(2, False)
+        self.btn_arm.setEnabled(False)
+        self._disable_exports()
+        self.results_display.clear()
 
     # ------------------------------------------------------------- Analyse
     def _read_analysis(self):
@@ -338,6 +445,10 @@ class MainWindow(QMainWindow):
                 "coupole_inf_d": lire_valeur(self.ci_d, "d coupole inf"),
                 "coupole_inf_f": lire_valeur(self.ci_f, "flèche coupole inf"),
                 "coupole_inf_e": lire_valeur(self.ci_e, "épais. coupole inf"),
+                "ceinture_sup_l": lire_valeur(self.cs_l, "largeur ceinture sup"),
+                "ceinture_sup_h": lire_valeur(self.cs_h, "hauteur ceinture sup"),
+                "ceinture_inf_l": lire_valeur(self.ci_l, "largeur ceinture inf"),
+                "ceinture_inf_h": lire_valeur(self.ci_h, "hauteur ceinture inf"),
             }
             params_fut = {
                 "H_fut": lire_valeur(self.h_fut_ce, "H_fut"),
@@ -495,7 +606,6 @@ class MainWindow(QMainWindow):
                 "w_max": lire_valeur(self.arm_wmax, "w_max"),
                 "q_couv": lire_valeur(self.arm_qcouv, "q_couv"),
                 "Q_lanterneau": lire_valeur(self.arm_qlan, "Q_lanterneau"),
-                "e_cuve": lire_valeur(self.arm_ecuve, "e_cuve"),
                 "e_couv": lire_valeur(self.arm_ecouv, "e_couv") if self.arm_ecouv.text().strip() else None,
             }
         except ValueError as e:

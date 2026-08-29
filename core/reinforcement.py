@@ -240,10 +240,17 @@ def _section_coupoles(items: List[Item], geom: dict, H_eau: float,
     d_inf = geom.get("coupole_inf_d", 2.0 * Rf)
     f_inf = geom.get("coupole_inf_f", d_inf / 8.0)
     e_cinf = geom.get("coupole_inf_e", max(0.15, d_inf / 35.0))
+    # Ceintures sup/inf : anneaux de liaison à section rectangulaire (largeur l, hauteur h)
+    csup_l = geom.get("ceinture_sup_l", 0.40)
+    csup_h = geom.get("ceinture_sup_h", 0.60)
+    cinf_l = geom.get("ceinture_inf_l", 0.50)
+    cinf_h = geom.get("ceinture_inf_h", 0.70)
     Rs_s = (D_sup**2 / 4.0 + f_sup**2) / (2.0 * f_sup) if f_sup > 0 else D_sup / 2.0
     Rs_i = (d_inf**2 / 4.0 + f_inf**2) / (2.0 * f_inf) if f_inf > 0 else d_inf / 2.0
     d_s = _d_eff(e_csup * 1000.0, f)
     d_i = _d_eff(e_cinf * 1000.0, f)
+    d_cs = _d_eff(csup_h * 1000.0, f)
+    d_ci = _d_eff(cinf_h * 1000.0, f)
 
     # ---- COUPOLE SUPERIEURE (hors eau) ----
     T_s = GAMMA_B * e_csup * Rs_s / 2.0     # poids propre (kPa->kN/m)
@@ -260,8 +267,10 @@ def _section_coupoles(items: List[Item], geom: dict, H_eau: float,
     items += [
         Item("CEINTURE SUP (cuve ↔ coupole sup)", "", "", "anneau de liaison — limite eau"),
         Item("  Tension anneau T (kN/m)", round(T_s, 1), "kN/m"),
+        Item("  Largeur anneau l (m)", round(csup_l, 3), "m", "saisie 1re page"),
+        Item("  Hauteur anneau h (m)", round(csup_h, 3), "m", "saisie 1re page"),
     ]
-    _gouverne(items, "Ceinture sup (anneau)", T_s, T_s, d_s, e_csup * 1000.0, fy, fck,
+    _gouverne(items, "Ceinture sup (anneau)", T_s, T_s, d_cs, csup_h * 1000.0, fy, fck,
               norme, 0.20, as_min, mode="tension", crack=True)
 
     # ---- COUPOLE INFÉRIEURE (contact eau) ----
@@ -280,8 +289,10 @@ def _section_coupoles(items: List[Item], geom: dict, H_eau: float,
     items += [
         Item("CEINTURE INF (fût ↔ cuve ↔ coupole inf)", "", "", "anneau de liaison — contact eau"),
         Item("  Tension anneau T (kN/m)", round(T_inf_anneau, 1), "kN/m"),
+        Item("  Largeur anneau l (m)", round(cinf_l, 3), "m", "saisie 1re page"),
+        Item("  Hauteur anneau h (m)", round(cinf_h, 3), "m", "saisie 1re page"),
     ]
-    _gouverne(items, "Ceinture inf (anneau)", T_inf_anneau, T_inf_anneau, d_i, e_cinf * 1000.0,
+    _gouverne(items, "Ceinture inf (anneau)", T_inf_anneau, T_inf_anneau, d_ci, cinf_h * 1000.0,
               fy, fck, norme, 0.20, as_min, mode="tension", crack=True)
 
 

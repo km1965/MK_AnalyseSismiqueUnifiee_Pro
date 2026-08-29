@@ -108,6 +108,10 @@ def analyser_chateau_eau_complet(
         d_inf = params_reservoir.get("coupole_inf_d", 2.0 * R_f)
         f_inf = params_reservoir.get("coupole_inf_f", d_inf / 8.0)
         e_cinf = params_reservoir.get("coupole_inf_e", max(0.15, d_inf / 35.0))
+        csup_l = params_reservoir.get("ceinture_sup_l", 0.40)
+        csup_h = params_reservoir.get("ceinture_sup_h", 0.60)
+        cinf_l = params_reservoir.get("ceinture_inf_l", 0.50)
+        cinf_h = params_reservoir.get("ceinture_inf_h", 0.70)
 
         reg = params_sismiques["regulation"]
         zone = params_sismiques["zone"]
@@ -196,6 +200,8 @@ def analyser_chateau_eau_complet(
             "epaisseur_cuve_m": e_cuve, "epaisseur_fut_m": e_fut,
             "coupole_sup_D": D_sup, "coupole_sup_f": f_sup, "coupole_sup_e": e_csup,
             "coupole_inf_d": d_inf, "coupole_inf_f": f_inf, "coupole_inf_e": e_cinf,
+            "ceinture_sup_l": csup_l, "ceinture_sup_h": csup_h,
+            "ceinture_inf_l": cinf_l, "ceinture_inf_h": cinf_h,
         })
 
         report.section("PARAMÈTRES HOUSNER (liquide)", [
