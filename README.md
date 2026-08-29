@@ -193,6 +193,25 @@ pytest tests/
 - [ ] **Sauvegarde / chargement** des projets (fichier `.mkpro`) et comparaison
       de scénarios.
 
+### Menu de l'application (à créer plus tard)
+- [ ] **Menu Fichier** : Nouveau / Ouvrir projet (.mkpro) / Enregistrer /
+      Enregistrer sous / Exporter la note (PDF, DOCX, CSV) / Imprimer / Quitter.
+- [ ] **Menu Édition** : Annuler–Rétablir, Copier–Coller les paramètres d'un
+      ouvrage à l'autre, Paramètres par défaut (usines).
+- [ ] **Menu Analyse** : Lancer l'analyse sismique, Lancer le
+      dimensionnement automatique de la fondation, Calculer les armatures,
+      Réinitialiser les résultats.
+- [ ] **Menu Affichage** : Onglets (Entrées / Fondations / Armatures),
+      basculer entre vue formulaire et vue schéma, zoom des croquis, thème
+      clair/sombre.
+- [ ] **Menu Outils** : Gestion des règlements (RPS 2011, EC8) et édition des
+      spectres, Bibliothèque de sols (φ, γ, δ), Bibliothèque de bétons/aciers,
+      Compareur de scénarios (vide vs plein, plusieurs géométries).
+- [ ] **Menu Langue** : bascule FR / EN / AR de l'interface et des notes.
+- [ ] **Menu ? / Aide** : À propos, Guide de prise en main, Liens vers les
+      références (Housner, Mononobe–Okabe, RPS 2011, EC8, BAEL 91, Fasc. 74),
+      Vérifier les mises à jour.
+
 ---
 
 > Les méthodes de ferraillage et de dimensionnement du radier sont des
