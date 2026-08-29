@@ -1,0 +1,26 @@
+--- DYNAMIQUE GLOBALE ---
+Période impulsive Ti (s),1.4576859131541016
+Période convective Tc (s),5.614837605422083
+
+--- FORCES SISMIQUES DE CALCUL ---
+Accélération de calcul Sa(Ti) (g),0.14046235759867326
+Accélération de calcul Sa(Tc) (g),0.03646588100825552
+
+Forces (kN)
+Force impulsive Fi,838.0850184405656
+Force convective Fc,130.69238473627746
+
+Moments à la base (kN.m)
+Moment impulsif Mi,25142.550553216966
+Moment convectif Mc,4528.0189372628
+
+--- RÉSULTATS COMBINÉS (SRSS) ---
+Effort tranchant Total V (kN),848.214004578195
+Moment de renversement Total M (kN.m),25547.031213377442
+
+--- VÉRIFICATION DE LA STABILITÉ ---
+Facteur de Sécurité (Glissement),5.6298174073950324
+Vérification Glissement,OK
+Facteur de Sécurité (Renversement),0.6542253285323086
+Vérification Renversement,NON OK
+

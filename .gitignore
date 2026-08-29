@@ -1,0 +1,20 @@
+# Environnement virtuel
+env/
+.venv/
+
+# Builds PyInstaller
+build/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Éditeurs / OS
+.vscode/
+.idea/
+Thumbs.db
+ehthumbs.db
