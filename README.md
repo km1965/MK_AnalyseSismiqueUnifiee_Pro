@@ -180,6 +180,28 @@ pytest tests/
 
 ---
 
+## Compilation de l'exécutable (Windows)
+
+Un exécutable autonome est généré avec PyInstaller (ne nécessite pas Python
+installé chez l'utilisateur) :
+
+```bash
+env\Scripts\pyinstaller.exe MK_AnalyseSismiqueUnifiee_Pro_V01.spec --noconfirm
+```
+
+Ou via le script fourni (Windows) :
+
+```bash
+build_exe.bat
+```
+
+Le `.spec` est versionné (le `name=` de l'`EXE()` contient `V01`). Pour livrer
+une nouvelle version, dupliquer le `.spec` et changer ce `name=`. L'exécutable
+n'est **pas** versionné (`.gitignore` exclut `dist/` et `build/`) ; il est
+distribué via une **Release GitHub** (asset binaire).
+
+---
+
 ## Feuille de route (prochaines mises à jour)
 
 - [ ] **Spectres multi-appuis / interaction sol–structure** (ressort de sol sur
@@ -196,7 +218,8 @@ pytest tests/
       rectangles de chaînage) en sortie DXF/SVG.
 - [ ] **Internationalisation** : bascule FR/EN/AR de l'interface et des notes.
 - [ ] **GitHub Actions CI** : exécution automatique de `pytest` à chaque push.
-- [ ] **Exécutable** distribuable (PyInstaller) Windows/Linux/macOS.
+- [x] **Exécutable Windows (V01)** généré (PyInstaller) — voir section « Compilation ».
+  - [ ] Décliner Linux / macOS.
 - [ ] **Sauvegarde / chargement** des projets (fichier `.mkpro`) et comparaison
       de scénarios.
 
